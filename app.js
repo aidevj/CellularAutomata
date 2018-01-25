@@ -1,80 +1,195 @@
 !function() {
   'use strict'
   
-  // interesting rules are 110, 126, 150, 182
-  const SELECTED_RULE = 30
+  let currentGrid =[];
+  let nextGrid =[];
+  let gridSize = 100;
+  let liveNeighborMap =[];    // holds number of live neighbors in each cell of current grid
   
-  const rules = {
-    // http://mathworld.wolfram.com/Rule30.html
-    30:[ 0,0,0,1,1,1,1,0 ],
-    110:[ 0,1,1,0,1,1,1,0 ]    
-  }
+  let debug = false;
   
-  let generation = 0
-  const numGenerations = 500
-  const width = 500
+  var once = false;
+  var once2 = false;
+  var mouseX, mouseY;
   
+    
   const app = {
     canvas: null,
     ctx: null,
-    nextState:[],
-    currentState:[],
     
     init() {
-      this.canvas = document.getElementsByTagName('canvas')[0]
-      this.ctx = this.canvas.getContext( '2d' )
-      this.draw = this.draw.bind( this )
-      this.fullScreenCanvas()
+      this.canvas = document.getElementsByTagName('canvas')[0];
+      this.ctx = this.canvas.getContext( '2d' );
+      this.draw = this.draw.bind( this );    
+      this.fullScreenCanvas();
       
-      window.onresize = this.fullScreenCanvas.bind( this )  
+      window.onresize = this.fullScreenCanvas.bind( this );  
       
-      requestAnimationFrame( this.draw )
-      
-      for( let i = 0; i < width; i++ ) {
-        this.currentState[ i ] = this.nextState[ i ] = 0
+      requestAnimationFrame( this.draw );
+        
+      // Asssign random values to each cell initially 
+      for (let i = 0; i < gridSize; i++) {
+          currentGrid[i] = [];
+          nextGrid[i] = [];
+        
+          for (let j = 0; j < gridSize; j++) {
+              currentGrid [i][j] = Math.random() > .5 ? 1 : 0;
+              nextGrid[i][j] = 0;
+          }
       }
       
-      this.nextState[ Math.round( width / 2) ] = 1
+      if (debug) console.log(currentGrid);
+         
+      
     },
+      
+
     
-    fullScreenCanvas() {
-      this.canvas.width  = this.height = window.innerWidth
-      this.canvas.height = this.width  = window.innerHeight
+    fullScreenCanvas() {    // in own function b/c so can also assign it to onresize event of window obj
+      this.canvas.width  = this.height = window.innerWidth;
+      this.canvas.height = this.width  = window.innerHeight;
     },
     
     // update your simulation here
     animate() {
-      this.currentState = this.nextState.slice( 0 )
+      // for each cell...
+      //    count the number of live neighbors
+      //    use game of life rules to determine if cell should live or die
+      ///   set new cell value in nextGrid based on results
+      //
+      // assign values in nextGrid to currentGrid
       
-      for( let i = 0; i < width; i++ ) {
-        let sum = ''        
-        sum += i > 0 ? this.currentState[ i - 1 ] : 0
-        sum += this.currentState[ i ]
-        sum += i < width - 1 ? this.currentState[ i + 1 ] : 0
-        this.nextState[ i ] = rules[ SELECTED_RULE ][ 7 - Number( '0b'+sum ) ]
+      for (let i = 0; i < gridSize; i++) {
+        liveNeighborMap[i] = [];
+        
+        for (let j = 0; j < gridSize; j++) {
+          liveNeighborMap[i][j] = 0;
+                    
+          //check 4 directions
+          if (i !== 0 && currentGrid[i-1][j] === 1) liveNeighborMap[i][j]++;  //left 
+          if (i+1 !== gridSize && currentGrid[i+1][j] === 1) liveNeighborMap[i][j]++;  //right
+          if (j !== 0 && currentGrid[i][j-1] === 1) liveNeighborMap[i][j]++;  //up 
+          if (j+1 !== gridSize && currentGrid[i][j+1] === 1) liveNeighborMap[i][j]++;  //down  
+        }
       }
+      
+      if (debug) {
+        if (!once) {
+          console.log(liveNeighborMap);
+          once = true;
+        }
+      }
+      
+
+      // Determine nextGrid
+      for (let i = 0; i < gridSize; i++) {
+        nextGrid[i] = [];
+        
+        for (let j = 0; j < gridSize; j++) {
+          if (currentGrid[i][j] === 0){ // DEAD
+            if (liveNeighborMap[i][j] === 3) {
+              nextGrid[i][j] = 1;
+            }
+            else {
+              nextGrid[i][j] = 0;
+            }
+          }
+          
+          if (currentGrid[i][j] === 1) { //ALIVE
+            if (liveNeighborMap[i][j] < 2) {
+              nextGrid[i][j] = 0;
+            } 
+            else if (liveNeighborMap[i][j] > 3) {
+              nextGrid[i][j] = 0;
+            } 
+            else {  // 2 or 3
+              nextGrid[i][j] = 1;
+            } 
+          }          
+        }
+      }
+        
+      if (debug) {
+        if (!once2) {
+          console.log(nextGrid);
+          once2 = true;
+        }
+      }
+      
+      
+      let swap = currentGrid;
+      currentGrid = nextGrid;
+      nextGrid = swap;
+      
       
     },
     
+    
     draw() {
-      requestAnimationFrame( this.draw )
-      const cellWidth = this.canvas.width / width
-      const cellHeight = this.canvas.height / numGenerations
-      //debugger
-      for( let i = 0; i < width; i++ ) {
-        if( this.nextState[ i ] === 1 ) {
-          this.ctx.fillRect( cellWidth * i, cellHeight * generation, cellWidth, cellHeight )
+      requestAnimationFrame( this.draw );
+      this.animate();   
+
+            
+      // draw to your canvas here
+      
+      let cellWidth = this.canvas.width / gridSize;
+      let cellHeight = this.canvas.height / gridSize;
+      
+      // background
+      this.ctx.fillStyle = 'white';
+      this.ctx.fillRect( 0,0, this.canvas.width, this.canvas.height );
+
+      // FILL IN GRID
+      
+      for (let i = 0; i < gridSize; i++) {
+        let row = currentGrid[i];
+        let yPos = i * cellHeight;
+
+        for (let j = 0; j < gridSize; j++) {
+          let cell = row[j];
+          if (cell === 1) {
+            let xPos = j * cellWidth;
+
+            this.ctx.fillStyle = "#cc6600";
+            this.ctx.fillRect( xPos, yPos, cellWidth, cellHeight );
+          }
         }
       }
-      this.animate()
-      generation++
       
-      // draw to your canvas here
-      this.ctx.fillStyle = 'red'
+      this.ctx.strokeStyle = 'black';
       
+      // DRAW GRID LINES
+      for (let i = 0; i < gridSize; i++) {
+        let yPos = i * cellHeight;
+        let xPos = i * cellWidth;
+        
+        // draw horizantals
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, yPos);
+        this.ctx.lineTo(this.canvas.width, yPos);
+        this.ctx.stroke();
+        this.ctx.closePath(); 
+        
+        // draw verticals
+        this.ctx.beginPath();
+        this.ctx.moveTo(xPos, 0);
+        this.ctx.lineTo(xPos, this.canvas.height);
+        this.ctx.stroke();
+        this.ctx.closePath();      
+      }
+      
+      this.sleep(1500);
+    
+    },
+    
+    sleep(milliseconds) {   // bad???
+      var start = new Date().getTime();
+      for (let i = 0; i < 1e7; i++) {
+        if (new Date().getTime() - start > milliseconds) break;
+      }
     }
   }
   
-  window.onload = app.init.bind( app )
+  window.onload = app.init.bind( app );
   
 }()
