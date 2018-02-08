@@ -3,29 +3,14 @@
   <head>
     <meta charset=utf-8>
     <title>Make Some Noise (Cellular Automata)</title>
-    <style>
-      canvas {
-        position:absolute;
-        width:100%;
-        height:100%;
-      }
-      
-      body { margin: 0; }
-      
-      #hud-upperRight {
-        position: fixed;
-        top: 5px;
-        right: 5px;
-        z-index: 100;
-        background-color: rgba(0,0,0,.6);
-        padding: 5px;
-        color: white;
-      }
-    </style>
+    <link rel="stylesheet" href="styles.css">
   </head>
   <body>
     <canvas></canvas>
     <div id="hud-upperRight">Live Cells:</div>
+    <div id="hud-bottom">
+      <input type="range" min="1" max="100" value="50" class="slider" id="myRange">
+    </div>
   </body>
   
   <script>
@@ -178,33 +163,33 @@
 
       sleep(1500);
       // AUDIO
-      let freq = Math.floor((Math.random() * 2200) + 220);
-      //playNote(.07);
+      let freq = Math.floor((Math.random() * 880) + 220);
+      playNote(freq, .5, .07);
 
     };
 
-    const sleep = function( milliseconds ) {  
+
+    const playNote = function(frequency, amp, duration) {
+      osc.type = 'triangle';
+      osc.frequency.value = frequency; // for now play one tone
+
+      const gainNode = audCtx.createGain();
+      gainNode.gain.setValueAtTime(0, audCtx.currentTime);
+      gainNode.gain.linearRampToValueAtTime( amp, audCtx.currentTime + duration );
+      gainNode.gain.linearRampToValueAtTime( amp, audCtx.currentTime + duration * 2 );
+
+      osc.connect( gainNode );
+      gainNode.connect( audCtx.destination);
+      
+      osc.start();
+      osc.stop( audCtx.currentTime + duration * 2 );
+    };
+    
+    const sleep = function(milliseconds) {   // bad???
       var start = new Date().getTime();
       for (let i = 0; i < 1e7; i++) {
         if (new Date().getTime() - start > milliseconds) break;
       }
-    };
-
-    const playNote = function(duration) {
-      osc.type = 'triangle';
-      osc.frequency.value = 220; // for now play one tone
-
-      //const gainNode = this.audCtx.createGain();
-      //gainNode.gain.setValueAtTime(0, this.audCtx.currentTime);
-      //gainNode.gain.linearRampToValueAtTime()
-
-      //this.osc.connect(gainNode);
-      //gainNode.connect( this.audCtx.destination);
-      
-      osc.connect( audCtx.destination )
-
-      osc.start();
-      osc.stop( audCtx.currentTime + duration * 2 );
     };
 
     window.onload = init();
