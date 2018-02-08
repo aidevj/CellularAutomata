@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang=en>
+  <head>
+    <meta charset=utf-8>
+    <title>Make Some Noise (Cellular Automata)</title>
+    <style>
+      canvas {
+        position:absolute;
+        width:100%;
+        height:100%;
+      }
+      
+      body { margin: 0; }
+      
+      #hud-upperRight {
+        position: fixed;
+        top: 5px;
+        right: 5px;
+        z-index: 100;
+        background-color: rgba(0,0,0,.6);
+        padding: 5px;
+        color: white;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas></canvas>
+    <div id="hud-upperRight">Live Cells:</div>
+  </body>
+  
+  <script>
+    'use strict';
+    
+    let currentGrid =[];
+    let nextGrid =[];
+    let gridSize = 50;
+    let liveNeighborMap =[]; 
+
+    let numAlive = 0;
+
+    let debug = false;
+
+    let canvas = null;
+    let ctx = null;
+    
+    // Audio
+    let audCtx = null;
+    let osc = null;
+
+    const init = function () {
+      canvas = document.getElementsByTagName('canvas')[0];
+      ctx = canvas.getContext( '2d' ); 
+      fullScreenCanvas();
+
+      // AUDIO
+      audCtx = new AudioContext();
+      osc = audCtx.createOscillator();
+      
+
+      window.onresize = fullScreenCanvas.bind( this );  
+
+      requestAnimationFrame( draw );
+
+      // Asssign random values to each cell initially 
+      for (let i = 0; i < gridSize; i++) {
+          currentGrid[i] = [];
+          nextGrid[i] = [];
+
+          for (let j = 0; j < gridSize; j++) {
+              currentGrid [i][j] = Math.random() > .5 ? 1 : 0;
+              nextGrid[i][j] = 0;
+          }
+      }
+
+      if (debug) console.log(currentGrid);
+    };
+
+    const fullScreenCanvas = function() { 
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+
+    // UPDATE
+    const animate = function() {
+      numAlive = 0;
+
+      for (let i = 0; i < gridSize; i++) {
+        liveNeighborMap[i] = [];
+
+        for (let j = 0; j < gridSize; j++) {
+          liveNeighborMap[i][j] = 0;
+
+          //check 4 directions
+          if (i !== 0 && currentGrid[i-1][j] === 1) liveNeighborMap[i][j]++;  //left 
+          if (i+1 !== gridSize && currentGrid[i+1][j] === 1) liveNeighborMap[i][j]++;  //right
+          if (j !== 0 && currentGrid[i][j-1] === 1) liveNeighborMap[i][j]++;  //up 
+          if (j+1 !== gridSize && currentGrid[i][j+1] === 1) liveNeighborMap[i][j]++;  //down  
+
+          // count live cells
+          if (currentGrid[i][j] === 1) numAlive++;
+        }
+      }
+
+      // print new num alive
+      document.getElementById('hud-upperRight').innerHTML = "Live Cells: " + numAlive;
+
+
+      // Determine nextGrid
+      for (let i = 0; i < gridSize; i++) {
+        nextGrid[i] = [];
+
+        for (let j = 0; j < gridSize; j++) {
+          if (currentGrid[i][j] === 0){ // DEAD
+            if (liveNeighborMap[i][j] === 3) {
+              nextGrid[i][j] = 1;
+            }
+            else {
+              nextGrid[i][j] = 0;
+            }
+          }
+
+          if (currentGrid[i][j] === 1) { //ALIVE
+            if (liveNeighborMap[i][j] < 2) {
+              nextGrid[i][j] = 0;
+            } 
+            else if (liveNeighborMap[i][j] > 3) {
+              nextGrid[i][j] = 0;
+            } 
+            else {  // 2 or 3
+              nextGrid[i][j] = 1;
+            } 
+          }          
+        }
+      }
+
+      let swap = currentGrid;
+      currentGrid = nextGrid;
+      nextGrid = swap;
+
+
+    };  //---- End of animate() 
+
+
+    const draw = function() {
+      requestAnimationFrame( draw );
+      animate();   
+
+      
+
+      // draw to your canvas here
+
+      let cellWidth = canvas.width / gridSize;
+      let cellHeight = canvas.height / gridSize;
+
+      // background
+      ctx.fillStyle = '#b7c8db';
+      ctx.fillRect( 0,0, canvas.width, canvas.height );
+
+      // FILL IN GRID
+
+      for (let i = 0; i < gridSize; i++) {
+        let row = currentGrid[i];
+        let yPos = i * cellHeight;
+
+        for (let j = 0; j < gridSize; j++) {
+          let cell = row[j];
+          if (cell === 1) {
+            let xPos = j * cellWidth;
+
+            ctx.fillStyle = "#2c5098";
+            ctx.fillRect( xPos, yPos, cellWidth, cellHeight );
+          }
+        }
+      }
+
+      ctx.strokeStyle = 'black';
+
+
+      sleep(1500);
+      // AUDIO
+      let freq = Math.floor((Math.random() * 2200) + 220);
+      //playNote(.07);
+
+    };
+
+    const sleep = function( milliseconds ) {  
+      var start = new Date().getTime();
+      for (let i = 0; i < 1e7; i++) {
+        if (new Date().getTime() - start > milliseconds) break;
+      }
+    };
+
+    const playNote = function(duration) {
+      osc.type = 'triangle';
+      osc.frequency.value = 220; // for now play one tone
+
+      //const gainNode = this.audCtx.createGain();
+      //gainNode.gain.setValueAtTime(0, this.audCtx.currentTime);
+      //gainNode.gain.linearRampToValueAtTime()
+
+      //this.osc.connect(gainNode);
+      //gainNode.connect( this.audCtx.destination);
+      
+      osc.connect( audCtx.destination )
+
+      osc.start();
+      osc.stop( audCtx.currentTime + duration * 2 );
+    };
+
+    window.onload = init();
+  </script>
+</html>
