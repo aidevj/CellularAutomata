@@ -24,6 +24,12 @@
           height = 200
     
     let canvas, ctx, grid, temp, next
+    
+    // diffusion equation rates
+    let dA = 1
+    let dB = 0.5
+    let feed = 0.055
+    let k = 0.062
 
     // setup after canvas is instantiated
     window.onload = function() {
@@ -38,11 +44,18 @@
         grid[i] = []
         next[i] = []
         for (let j = 0; j < height; j++) {
-          grid[i][j] = { a: Math.random(), b: Math.random() }
-          next[i][j] = { a: 0, b:0 }
+          grid[i][j] = { a: 1, b: 0 }
+          next[i][j] = { a: 1, b:0 }
         }
       }
-      console.log( grid )
+      //console.log( grid )
+      
+      for (let i = 100; i < 110; i++){
+        for (let j = 100; j < 110; j++){
+          grid[i][j].b = 1
+        }
+      }
+      
 
       requestAnimationFrame( draw )
     }
@@ -61,10 +74,15 @@
           pixels = imgd.data
 
       // run simulation here...
-      for( let x = 0; x < width; x++ ) {
-        for( let y = 0; y < height; y++ ) {
-          next[x][y].a = grid[x][y].a * 0.95
-          next[x][y].b = grid[x][y].b * 1.01
+      for( let x = 1; x < width - 1; x++ ) {
+        for( let y = 1; y < height - 1; y++ ) {
+          let a = grid[x][y].a
+          let b = grid[x][y].b
+          next[x][y].a = a + (dA + laplace('A', x, y)) - (a * b * b) + (feed * (1 - a))
+          next[x][y].b = b + (dB + laplace('B', x, y)) + (a * b * b) - ((k + feed) * b)
+          
+          next[x][y].a = clamp(next[x][y].a, 0, 1)
+          next[x][y].b = clamp(next[x][y].b, 0, 1)
         }
       }
 
@@ -72,16 +90,18 @@
       // ... and then draw
       for( let x = 0; x < width; x++ ) {
         for( let y = 0; y < height; y++ ) {
-          let pixelIndex = (y * width * 4 ) + ( x * 4 )
+          let pixelIndex = (x + y * width) * 4
           
           // create a value based on some combination of a and b
-          // for this particular cell... NOTE THAT THIS WILL THROW
-          // AN ERROR UNTIL YOU FILL IN THE VALUE
-          let amount = 0 // XXXXXX
-
-          pixels[ pixelIndex ]     = Math.floor(255 * next[x][y].a)
+          // for this particular cell
+          let a = next[x][y].a
+          let b = next[x][y].b
+          let amount = Math.floor((a - b) * 255)
+          amount = clamp(amount, 0, 255)            // avoid edge jitter
+          
+          pixels[ pixelIndex ]     = amount
           pixels[ pixelIndex + 1 ] = amount
-          pixels[ pixelIndex + 2 ] = Math.floor(255 * next[x][y].b) 
+          pixels[ pixelIndex + 2 ] = amount
           pixels[ pixelIndex + 3 ] = 255
         }
       }
@@ -91,11 +111,46 @@
       swap()
     }
     
+    // LaPlace functions
+    const laplace = function(type, x, y) {
+      let sum = 0
+      
+      switch (type) {
+        case 'A':
+          sum += grid[x][y].a * -1             // center
+          sum += grid[x - 1][y].a * 0.2        // left
+          sum += grid[x + 1][y].a * 0.2        // right
+          sum += grid[x][y - 1].a * 0.2        // up
+          sum += grid[x][y + 1].a * 0.2        // down
+          sum += grid[x - 1][y - 1].a * 0.05   // topleft
+          sum += grid[x + 1][y - 1].a * 0.05   // topright
+          sum += grid[x - 1][y + 1].a * 0.05   // bottomleft
+          sum += grid[x + 1][y + 1].a * 0.05   // bottomright
+          break;
+        case 'B':
+          sum += grid[x][y].b * -1
+          sum += grid[x - 1][y].b * 0.2     
+          sum += grid[x + 1][y].b * 0.2     
+          sum += grid[x][y - 1].b * 0.2     
+          sum += grid[x][y + 1].b * 0.2     
+          sum += grid[x - 1][y - 1].b * 0.05
+          sum += grid[x + 1][y - 1].b * 0.05
+          sum += grid[x - 1][y + 1].b * 0.05
+          sum += grid[x + 1][y + 1].b * 0.05
+          break;
+      }
+      return sum
+    }    
+    
     
     const swap = function() {
       temp = grid
       grid = next
       next = temp
+    }
+    
+    const clamp = function(n, min, max) {
+      return (Math.min(max, Math.max(min, n)))
     }
     
   </script>
