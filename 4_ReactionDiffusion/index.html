@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang='en'>
+  <head>
+
+    <style>
+      body { margin:0; padding:0 }
+      canvas { width:100%; height:100% }
+    </style>
+
+  <script type="text/javascript">function lti_launch( vars ) { var query = ''; for(var key in vars) { if(query.length == 0) { query += '?' + key + '=' + encodeURIComponent(vars[key]); } else { query += '&' + key + '=' + encodeURIComponent(vars[key]); } } location.replace( '/d2l/customization/pearsonlti/6605/Launch' + query ); }</script><script type="text/javascript" src="/d2l/common/math/MathML.js?v=10.7.9.9606-258" ></script><script type="text/javascript">document.addEventListener('DOMContentLoaded', function() { D2LMathML.DesktopInit('https://s.brightspace.com/lib/mathjax/2.6.1/MathJax.js?config=MML_HTMLorMML','https://s.brightspace.com/lib/mathjax/2.6.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML%2cSafe'); });</script></head>
+
+  <body>
+    <canvas></canvas>
+  </body>
+
+  <script>
+    // Karl Sims RD tutorial: http://www.karlsims.com/rd.html
+    // Video tutorial using p5.js (don't use p5.js!)
+    // https://www.youtube.com/watch?v=BV9ny785UNc
+    
+    // calculating large grids can get expensive very quickly
+    // experiment with different values to see how high you can go
+    const width = 200, 
+          height = 200
+    
+    let canvas, ctx, grid, temp, next
+
+    // setup after canvas is instantiated
+    window.onload = function() {
+      canvas = document.querySelector( 'canvas' )
+      ctx = canvas.getContext( '2d' )
+      canvas.width = width
+      canvas.height = height
+      
+      grid = []
+      next = []
+      for (let i = 0; i < width; i++) {
+        grid[i] = []
+        next[i] = []
+        for (let j = 0; j < height; j++) {
+          grid[i][j] = { a: Math.random(), b: Math.random() }
+          next[i][j] = { a: 0, b:0 }
+        }
+      }
+      console.log( grid )
+
+      requestAnimationFrame( draw )
+    }
+
+    const draw = function() {
+      requestAnimationFrame( draw )
+      
+      ctx.fillStyle = 'black'
+      ctx.fillRect( 0,0, width, height )
+      
+      // get a reference to all the pixels stored in our canvas
+      // so that we can write them to the screen all at once instead
+      // of using hundreds of calls to fillRect(), which would be
+      // expensive!
+      let imgd = ctx.getImageData(0, 0, width, height),
+          pixels = imgd.data
+
+      // run simulation here...
+      for( let x = 0; x < width; x++ ) {
+        for( let y = 0; y < height; y++ ) {
+          next[x][y].a = grid[x][y].a * 0.95
+          next[x][y].b = grid[x][y].b * 1.01
+        }
+      }
+
+
+      // ... and then draw
+      for( let x = 0; x < width; x++ ) {
+        for( let y = 0; y < height; y++ ) {
+          let pixelIndex = (y * width * 4 ) + ( x * 4 )
+          
+          // create a value based on some combination of a and b
+          // for this particular cell... NOTE THAT THIS WILL THROW
+          // AN ERROR UNTIL YOU FILL IN THE VALUE
+          let amount = 0 // XXXXXX
+
+          pixels[ pixelIndex ]     = Math.floor(255 * next[x][y].a)
+          pixels[ pixelIndex + 1 ] = amount
+          pixels[ pixelIndex + 2 ] = Math.floor(255 * next[x][y].b) 
+          pixels[ pixelIndex + 3 ] = 255
+        }
+      }
+
+      ctx.putImageData( imgd, 0, 0 )
+
+      swap()
+    }
+    
+    
+    const swap = function() {
+      temp = grid
+      grid = next
+      next = temp
+    }
+    
+  </script>
+
+</html>
